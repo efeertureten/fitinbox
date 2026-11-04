@@ -868,7 +868,8 @@
     btnChest: $('#btnChest'), result: $('#result'), buyOv: $('#buyOv'), settingsOv: $('#settingsOv')
   };
   let toastTimer = 0;
-  function toast(msg, ms) {
+  function toast(msg, ms, tone) {
+    if (G.screen === 'play' && !el.hudTop.hidden && el.guideBanner) { flashGuide(msg, ms || 2400, tone || 'info'); return; }
     el.toast.textContent = msg; el.toast.classList.add('show');
     clearTimeout(toastTimer); toastTimer = setTimeout(() => el.toast.classList.remove('show'), ms || 2400);
   }
@@ -900,7 +901,8 @@
   const iconOf = k => (window.PJ_ICONS || {})[k === 'joker' ? 'perfume' : k] || '';
   function miniHTML(it, box) {
     const k = itemOf(it), locked = it.axis === 'h' || it.axis === 'v';
-    return `<span class="ico it-${k}" style="--box:${box}px"><img src="${iconOf(k)}" alt="" draggable="false">` +
+    const vert = it.h > it.w;
+    return `<span class="ico it-${k}${vert ? ' vert' : ''}" style="--box:${box}px"><img src="${iconOf(k)}" alt="" draggable="false">` +
       (k === 'joker' ? '<span class="joker-star" aria-hidden="true">★</span>' : '') + '</span>' +
       (locked ? `<span class="axis-badge" aria-hidden="true">${it.axis === 'h' ? '↔' : '↕'}</span>` : '') +
       footprintSVG(it, box > 52 ? 7 : box > 40 ? 6 : 4.5);
@@ -922,7 +924,7 @@
       const attrs = isHead ? ` id="headTray" aria-label="Sıradaki eşya: ${itemLabel(it, true)}"` : ` aria-label="${i + 1}. sıra: ${itemLabel(it, true)}"`;
       const lbl = near ? `<span class="tray-lbl${name.length > 10 ? ' long' : ''}">${name}</span>` : '';
       const num = isHead ? '' : `<span class="tray-num">${i + 1}</span>`;
-      return `<${isHead ? 'button type="button"' : 'div'} class="${cls}"${attrs} style="--from:${isHead ? 86 : 90}px">${miniHTML(it, isHead ? 62 : near ? 48 : 34)}${lbl}${num}</${isHead ? 'button' : 'div'}>`;
+      return `<${isHead ? 'button type="button"' : 'div'} class="${cls}"${attrs} style="--from:${isHead ? 64 : 68}px">${miniHTML(it, isHead ? 46 : near ? 38 : 34)}${lbl}${num}</${isHead ? 'button' : 'div'}>`;
     }).join('');
     if (shifted) el.belt.scrollTo({ left: 0, behavior: REDUCED ? 'auto' : 'smooth' }); else el.belt.scrollLeft = keep;
     if (shifted && !REDUCED) { el.belt.classList.remove('roll'); void el.belt.offsetWidth; el.belt.classList.add('roll'); }
@@ -1004,7 +1006,8 @@
     const budget = E.gapBudget(G.st, G.queue);
     el.gapChip.classList.toggle('zero', boss);
     el.gapChip.classList.toggle('tight', !zero && budget <= 1);
-    el.gapChip.innerHTML = boss ? '<b>ZERO GAP</b> boşluk yok' : `Boşluk hakkı <b>${Math.max(0, budget)}</b>`;
+    el.gapChip.innerHTML = boss ? '<b>ZERO GAP</b>' : `Boşluk <b>${Math.max(0, budget)}</b>`;
+    const hc = $('#hudCoins'); if (hc) hc.textContent = save.coins;
     for (const [k, badge, btn] of [['undo', el.nUndo, el.bUndo], ['vac', el.nVac, el.bVac], ['shake', el.nShake, el.bShake]]) {
       const left = boostLeft(k);
       badge.textContent = left > 0 ? left : '+';
@@ -1014,6 +1017,7 @@
     el.bVac.classList.toggle('armed', G.mode === 'vacuum');
     updateGates(); updateHalo(); updateEmptyOverlay();
     el.hint.textContent = hintText();
+    if (G.moves >= 3) { if (guide.mode === 'intro') fadeGuide(400); else if (guide.prev && guide.prev.mode === 'intro') guide.prev = null; }
   }
   function setSoundIcon() { el.btnSound.innerHTML = (sfx.muted ? SVG.soundOff : SVG.soundOn) + `<span>Ses: ${sfx.muted ? 'Kapalı' : 'Açık'}</span>`; }
 
@@ -1117,7 +1121,7 @@
       narrow: `Kapı ${gate.len} kare, eşya ${cross} kare genişliğinde. Sığmıyor.`,
       blocked: 'Bu kapının önü dolu. Önce içeride yer aç.'
     }[why];
-    toast(msg); sfx.deny(); haptic([8, 40, 8]);
+    toast(msg, 2600, 'warn'); sfx.deny(); haptic([8, 40, 8]);
     const v = gateViews[gi]; if (v) v.flash = 1;
   }
   function outsideCenter(b, side) {
@@ -1153,7 +1157,7 @@
     const item = G.queue[0];
     if (!item || item.type !== 'sock') return;
     const g = E.occ(G.st);
-    if (cx < 0 || cy < 0 || cx >= G.st.W || cy >= G.st.H || g[cy * G.st.W + cx]) { toast('Joker parfüm sadece boş bir kareye bırakılır.'); sfx.deny(); return; }
+    if (cx < 0 || cy < 0 || cx >= G.st.W || cy >= G.st.H || g[cy * G.st.W + cx]) { toast('Joker parfüm sadece boş bir kareye bırakılır.', 2400, 'warn'); sfx.deny(); return; }
     pushUndo(); G.queue.shift(); G.moves++;
     const b = { id: item.id, w: 1, h: 1, x: cx, y: cy, color: item.color, axis: 'free', soft: false, softAxis: null, compressed: false, base: false, capped: false, fixed: false, sock: true, enteredFrom: 'drop' };
     G.st.blocks.push(b);
@@ -1174,7 +1178,7 @@
     if (!b) return;
     if (!E.isSnug(G.st, b)) {
       wiggle(b.id); sfx.deny();
-      toast('Şeffaf kapak için önce takı kutusu yerine oturmalı: hiçbir yöne kayamayacak hale gelsin.', 3000);
+      toast('Önce takı kutusunu kilitle: hiçbir yöne kaymasın.', 2800, 'warn');
       return;
     }
     pushUndo(); G.queue.shift(); b.capped = true; G.moves++; markTut('lid');
@@ -1212,16 +1216,16 @@
       if (ax === 'x') puff(t.x + trail * (b.w / 2 + 0.4), t.z, 6, 0.7); else puff(t.x, t.z + trail * (b.h / 2 + 0.4), 6, 0.7);
     }
     sfx.squish(); haptic([10, 30, 14]);
-    toast('Sıkıştı! 1×3 → 1×2');
+    toast('Sıkıştı! 1×3 → 1×2', 1800, 'win');
     return true;
   }
 
   function tryVacuum(b) {
     if (b.fixed || b.sock || b.base || b.capped) {
-      toast(b.base ? 'Takı kutusu vakumlanamaz: kapağı ona göre.' : 'Vakum bu eşyada çalışmaz.'); sfx.deny(); wiggle(b.id); return;
+      toast(b.base ? 'Takı kutusu vakumlanamaz.' : 'Vakum bu eşyada çalışmaz.', 2200, 'warn'); sfx.deny(); wiggle(b.id); return;
     }
     const s = E.shrinkInfo(b);
-    if (!s) { toast('Bu blok zaten en küçük boyutta.'); sfx.deny(); return; }
+    if (!s) { toast('Bu eşya zaten en küçük boyutta.', 2200, 'warn'); sfx.deny(); return; }
     pushUndo();
     useBoost('vac'); G.mode = 'idle';
     const oldW = b.w, oldH = b.h, oldC = blockCenter(b);
@@ -1240,7 +1244,7 @@
       gsap.to(m.group.scale, { x: 1, y: 1, z: 1, duration: 0.7, ease: 'elastic.out(1,0.4)' });
       puff(oldC.x, oldC.z, 10, Math.max(oldW, oldH) * 0.8, 0.5);
     } else m.group.position.copy(t);
-    toast(`Vakumlandı! ${s.freed} joker parfüm kuyruğun başına eklendi.`, 2800);
+    toast(`Vakumlandı! +${s.freed} joker parfüm sıranın başında.`, 2600, 'win');
     renderQueue(); updateHUD(); afterAction();
   }
 
@@ -1248,7 +1252,7 @@
     el.shakePick.hidden = true;
     const vec = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] }[dirName];
     const trial = { W: G.st.W, H: G.st.H, gates: G.st.gates, blocks: E.cloneBlocks(G.st.blocks) };
-    if (!E.pressAll(trial, vec)) { toast('Bu yönde kapanacak boşluk yok. Booster harcanmadı.'); sfx.deny(); G.mode = 'idle'; updateHUD(); return; }
+    if (!E.pressAll(trial, vec)) { toast('Bu yönde kapanacak boşluk yok. Booster harcanmadı.', 2400, 'warn'); sfx.deny(); G.mode = 'idle'; updateHUD(); return; }
     pushUndo();
     const before = new Map(G.st.blocks.map(b => [b.id, { x: b.x, y: b.y }]));
     G.st.blocks = trial.blocks;
@@ -1275,7 +1279,7 @@
 
   function doUndo() {
     if (G.busy || G.won) return;
-    if (!G.undo.length) { toast('Geri alınacak hamle yok.'); sfx.deny(); return; }
+    if (!G.undo.length) { toast('Geri alınacak hamle yok.', 2000, 'warn'); sfx.deny(); return; }
     if (boostLeft('undo') <= 0) { offerBoost('undo'); return; }
     useBoost('undo');
     const snap = G.undo.pop();
@@ -1301,8 +1305,8 @@
      ====================================================================== */
   let drag = null;
   function startBlockDrag(b, e, gp) {
-    if (b.fixed) { wiggle(b.id); sfx.deny(); toast('Sabit bölme: bavulun iç dikişi, yerinden oynamaz.'); return; }
-    if (b.capped) { wiggle(b.id); sfx.deny(); toast('Kapağı takılan blok kilitlendi.'); return; }
+    if (b.fixed) { wiggle(b.id); sfx.deny(); toast('Sabit bölme yerinden oynamaz.', 2000, 'warn'); return; }
+    if (b.capped) { wiggle(b.id); sfx.deny(); toast('Kapağı takılan kutu kilitli.', 2000, 'warn'); return; }
     const m = meshes.get(b.id); if (!m) return;
     gsap.killTweensOf(m.group.position); gsap.killTweensOf(m.group.scale);
     m.group.position.copy(blockCenter(b)); m.group.scale.set(1, 1, 1);
@@ -1398,10 +1402,10 @@
     const gh = pickGate(e);
     if (gh) {
       if (head && head.type === 'block') { gateDown(e, gh); return; }
-      if (head && head.type === 'sock') { toast('Joker parfüm kapıdan girmez: boş bir kareye dokun.'); return; }
+      if (head && head.type === 'sock') { toast('Joker parfüm kapıdan girmez: boş bir kareye dokun.', 2400, 'warn'); return; }
       if (head && head.type === 'cap') { toast('Şeffaf kapak takı kutusunun üstüne oturur: kutuya dokun.'); return; }
     }
-    if (head && head.type === 'block' && gp && gp.gx >= 0 && gp.gy >= 0 && gp.gx < G.st.W && gp.gy < G.st.H) toast('Sıradaki eşya bir kapıdan girer: parlayan oklu kapılara dokun.');
+    if (head && head.type === 'block' && gp && gp.gx >= 0 && gp.gy >= 0 && gp.gx < G.st.W && gp.gy < G.st.H) toast('Sıradaki eşya kapıdan girer: parlayan kapıya dokun.', 2400, 'warn');
   });
   canvas.addEventListener('pointermove', e => {
     if (drag && e.pointerId === drag.pid) { moveBlockDrag(pointerGrid(e)); return; }
@@ -1584,7 +1588,7 @@
     const quick = !lane.moved && performance.now() - lane.t0 < 320;
     if (!quick || (lane.prev !== null && lane.prev === lane.sel)) { confirmLane(); return; }
     lane.pending = true;
-    if (!laneHintShown) { laneHintShown = true; toast('Bu kapıda birden fazla şerit var: parmağını kapı boyunca kaydırıp bırak ya da aynı şeride tekrar dokun.', 3800); }
+    if (!laneHintShown) { laneHintShown = true; toast('Birden fazla şerit var: kapı boyunca kaydır ya da aynı şeride tekrar dokun.', 3200); }
   }
   function confirmLane() {
     const { item, gi, opts, sel } = lane, o = opts[sel];
@@ -1596,13 +1600,51 @@
   /* ======================================================================
      GHOST HAND — short looping demos the first time a mechanic opens
      ====================================================================== */
-  const TUT_AT = { 1: 'gate', 4: 'slide', 21: 'axis', 36: 'towel', 61: 'lid' };
+  const TUT_AT = { 1: 'gate', 2: 'slide', 4: 'slide', 21: 'axis', 36: 'towel', 61: 'lid' };
   const tutMem = {};
   const tut = { kind: null, tl: null, holo: null, p: new THREE.Vector3(), press: 0, alpha: 0, fade: 0, trail: null, trailAlpha: 0, timer: 0, quietUntil: 0, hiddenId: null };
   function showReal(id, v) { const m = meshes.get(id); if (m) m.group.visible = v; tut.hiddenId = v ? null : id; }
   const tutEl = { root: $('#tut'), hand: $('#tutHand'), ripple: $('#tutRipple'), no: $('#tutNo'), path: $('#tutPath') };
   function tutDone(k) { if (tutMem[k]) return true; try { return localStorage.getItem('pj-tut-' + k) === '1'; } catch (e) { return false; } }
+  /* ---- Guide banner: the text line that rides along with the ghost hand ---- */
+  el.guideBanner = $('#guideBanner'); el.guideText = $('#guideText');
+  const GUIDE = {
+    gate: '👆 Parlayan kapıya dokun: eşya içeri kayar!',
+    slide: '👆 Kutudaki bir eşyayı tut ve boşluğa kaydır!',
+    axis: '↔ ↕ Oklu eşya yalnızca ok yönünde kayar!',
+    towel: '🏖️ Havluyu duvara doğru itmeye devam et: 1×3 → 1×2!',
+    lid: '💎 Takı kutusu kıpırdamıyor: şimdi kapağını tak!'
+  };
+  const GUIDE_OK = { gate: 'Harika! Sıradaki eşyayı da gönder.', slide: 'Süper! Eşyaları kaydırarak yer açabilirsin.', axis: 'Tamam! Ok yönü = kayma yönü.', towel: 'Büzüştü! Havlu artık 1×2.', lid: 'Kapak takıldı!' };
+  const guide = { mode: null, kind: null, tone: '', timer: 0, prev: null };
+  const GUIDE_TONES = ['ok', 'warn', 'info', 'win', 'hard', 'super'];
+  function setGuide(text, mode, kind, tone) {
+    const gb = el.guideBanner;
+    clearTimeout(guide.timer);
+    guide.mode = mode; guide.kind = kind || null; guide.tone = tone || (mode === 'ok' ? 'ok' : '');
+    el.guideText.textContent = text;
+    gb.hidden = false;
+    gb.classList.remove('gone', 'pulse', ...GUIDE_TONES);
+    if (guide.tone) gb.classList.add(guide.tone);
+    void gb.offsetWidth; gb.classList.add('pulse');
+  }
+  /* short-lived message (former toast) in the same slot; the hint underneath comes back afterwards */
+  function flashGuide(msg, ms, tone) {
+    if (guide.mode !== 'flash') guide.prev = (guide.mode === 'intro' || guide.mode === 'tut') ? { text: el.guideText.textContent, mode: guide.mode, kind: guide.kind, tone: guide.tone } : null;
+    setGuide(msg, 'flash', null, tone);
+    guide.timer = setTimeout(() => {
+      const p = guide.prev; guide.prev = null;
+      if (p && (p.mode !== 'tut' || tut.kind === p.kind)) setGuide(p.text, p.mode, p.kind, p.tone);
+      else { guide.mode = null; el.guideBanner.classList.add('gone'); }
+    }, ms);
+  }
+  function fadeGuide(ms) {
+    guide.prev = null;
+    clearTimeout(guide.timer);
+    guide.timer = setTimeout(() => { guide.mode = null; el.guideBanner.classList.add('gone'); }, ms || 0);
+  }
   function markTut(k) {
+    if (!tutMem[k] && ((guide.mode === 'tut' && guide.kind === k) || (guide.mode === 'flash' && guide.prev && guide.prev.kind === k))) { guide.prev = null; setGuide('✓ ' + GUIDE_OK[k], 'ok'); fadeGuide(2600); }
     tutMem[k] = true;
     try { localStorage.setItem('pj-tut-' + k, '1'); } catch (e) { /* ignore */ }
     if (tut.kind === k) stopTut(false);
@@ -1614,14 +1656,14 @@
   /* after the player interrupts a demo, give them a quiet spell before it returns */
   function scheduleTut(ms) { clearTimeout(tut.timer); tut.timer = setTimeout(tryTut, Math.max(ms, tut.quietUntil - performance.now())); }
   function tutBlocked() {
-    return G.screen !== 'play' || G.won || G.busy > 0 || !!drag || !!qdrag || !!lane || G.mode !== 'idle' || !el.helpOv.hidden || !el.buyOv.hidden || !el.settingsOv.hidden ||
+    return G.screen !== 'play' || G.won || G.busy > 0 || !!drag || !!qdrag || !!lane || G.mode !== 'idle' || !el.helpOv.hidden || !el.buyOv.hidden || !el.settingsOv.hidden || !($('#pauseOv') && $('#pauseOv').hidden) ||
       !el.failOv.hidden || !el.shakePick.hidden || !el.queueOv.hidden;
   }
   function tryTut() {
     if (tut.kind) return;
     const kind = TUT_AT[G.idx + 1];
     if (!kind || tutDone(kind)) return;
-    if (tutBlocked()) { scheduleTut(900); return; }
+    if (tutBlocked()) { scheduleTut(G.busy > 0 ? 250 : 700); return; }
     const plan = planTut(kind);
     if (plan) playTut(kind, plan);
   }
@@ -1699,6 +1741,7 @@
     stopTut(false);
     tut.kind = kind;
     tutEl.root.hidden = false;
+    if (GUIDE[kind] && guide.mode !== 'flash') setGuide(GUIDE[kind], 'tut', kind);
     const tl = gsap.timeline({ repeat: -1, repeatDelay: 0.9 });
     tut.tl = tl;
     const P = tut.p;
@@ -1815,7 +1858,8 @@
     { n: 3, from: 36, to: 60, name: 'Plaj Havlusu' }, { n: 4, from: 61, to: 85, name: 'Takı Kutusu ve Organizer' },
     { n: 5, from: 86, to: 100, name: 'Ultra Valiz' }
   ];
-  const ZERO_GAP_LEVELS = new Set([90, 95, 100]);
+  const ZERO_GAP_LEVELS = new Set([20, 30, 40, 50, 60, 70, 80, 90, 100]);
+  const HARD_MAP_LEVELS = new Set([15, 25, 35, 45, 55, 65, 75, 85, 95]);
   function loadSave() {
     let s = null;
     try { s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { s = null; }
@@ -2024,14 +2068,20 @@
     root.visible = true;
     loadLevel(i);
     fitCamera();
-    let seen = false; try { seen = localStorage.getItem('pj-seen-help') === '1'; } catch (e) { /* ignore */ }
-    if (!seen) el.helpOv.hidden = false;
+    /* Visual onboarding via 3D Ghost Hand + guideBanner instead of blocking text modal */
   }
+  const tierFor = n => n <= 100 ? E.tierOf(n) : (n % 10 === 0 ? 'super' : n % 10 === 5 ? 'hard' : 'normal');
   function updateHome(fromCoins) {
     const n = nextLevel(), t = totalStars(), ch = chestState();
     $('#hStars').textContent = t;
     if (fromCoins != null) animateCount($('#hCoins'), fromCoins, save.coins, 900); else $('#hCoins').textContent = save.coins;
     $('#playNum').textContent = n;
+    const tier = tierFor(n), pt = $('#playTier'), btn = $('#btnPlay');
+    btn.classList.toggle('tier-super', tier === 'super'); btn.classList.toggle('tier-hard', tier === 'hard');
+    $('#playIco').textContent = tier === 'super' ? '💀' : tier === 'hard' ? '🔥' : '';
+    pt.hidden = !(tier === 'super' || tier === 'hard');
+    pt.className = 'pb-tier ' + tier; pt.textContent = tier === 'super' ? '💀 SÜPER ZOR' : tier === 'hard' ? '🔥 ZOR' : '';
+    btn.setAttribute('aria-label', `Bölüm ${n}` + (tier === 'super' ? ', süper zor, sıfır boşluk' : tier === 'hard' ? ', zor bölüm' : '') + ', oyna');
     $('#playTrip').textContent = `${levelName(n)} · ${levelCode(n)} · ${levelGrid(n)}`;
     $('#chestFill').style.width = Math.min(100, ch.into / CHEST_EVERY * 100) + '%';
     $('#chestTxt').textContent = ch.ready ? 'AÇ!' : `${ch.into}/${CHEST_EVERY}`;
@@ -2063,7 +2113,7 @@
       for (let n = ph.from; n <= ph.to; n++) {
         const locked = n > cur, st = save.stars[n] || 0, isCur = n === cur;
         const stars = locked ? `<span class="lock">${LOCK_SVG}</span>` : `<span class="st">${starSVG(st > 0, 12)}${starSVG(st > 1, 12)}${starSVG(st > 2, 12)}</span>`;
-        html += `<button type="button" class="lv${ZERO_GAP_LEVELS.has(n) ? ' zg' : ''}${isCur ? ' cur' : ''}${locked ? ' locked' : ''}" data-lv="${n}"${locked ? ' aria-disabled="true"' : ''} aria-label="Bölüm ${n}${locked ? ', kilitli' : `, ${st} yıldız`}"><span class="lv-n">${n}</span>${stars}</button>`;
+        html += `<button type="button" class="lv${ZERO_GAP_LEVELS.has(n) ? ' zg' : HARD_MAP_LEVELS.has(n) ? ' hard' : ''}${isCur ? ' cur' : ''}${locked ? ' locked' : ''}" data-lv="${n}"${locked ? ' aria-disabled="true"' : ''} aria-label="Bölüm ${n}${locked ? ', kilitli' : `, ${st} yıldız`}"><span class="lv-n">${n}</span>${stars}</button>`;
       }
       html += '</div></section>';
     }
@@ -2232,7 +2282,7 @@
     sfx.pop();
     if (G.selected) {
       const any = gateViews.some(v => v.valid);
-      toast(any ? 'Şimdi parlayan bir kapıya dokun.' : 'Hiçbir kapı uygun değil: içerideki blokları kaydır.');
+      toast(any ? 'Şimdi parlayan bir kapıya dokun.' : 'Hiçbir kapı uygun değil: içerideki eşyaları kaydır.', 2400, any ? 'info' : 'warn');
       gateViews.forEach(v => { if (v.valid) v.flash = 1; });
     }
     renderQueue();
@@ -2248,9 +2298,9 @@
     stopTut(true); cancelLane();
     if (G.mode === 'vacuum') { G.mode = 'idle'; updateHUD(); toast('Vakum iptal edildi.'); return; }
     if (boostLeft('vac') <= 0) { offerBoost('vac'); return; }
-    if (!G.st.blocks.some(b => !b.fixed && !b.sock && !b.base && !b.capped && b.w * b.h > 1)) { toast('İçeride vakumlanacak blok yok.'); sfx.deny(); return; }
+    if (!G.st.blocks.some(b => !b.fixed && !b.sock && !b.base && !b.capped && b.w * b.h > 1)) { toast('İçeride vakumlanacak eşya yok.', 2200, 'warn'); sfx.deny(); return; }
     G.mode = 'vacuum'; G.selected = false; closeFail(); updateHUD(); renderQueue();
-    toast('Vakum hazır: küçültmek istediğin bloğa dokun.', 2600); sfx.pop();
+    toast('Vakum hazır: küçültmek istediğin eşyaya dokun.', 2600); sfx.pop();
   });
   el.bShake.addEventListener('click', () => {
     sfx.unlock();
@@ -2267,9 +2317,35 @@
     if (btn.id === 'shakeCancel') { el.shakePick.hidden = true; return; }
     if (btn.dataset.dir) doShake(btn.dataset.dir);
   });
-  $('#btnRestart').addEventListener('click', () => { sfx.unlock(); if (G.won && G.busy) return; loadLevel(G.idx); toast('Bavul boşaltıldı, baştan başla.'); });
+  $('#btnRestart').addEventListener('click', () => { sfx.unlock(); if (G.won && G.busy) return; loadLevel(G.idx); toast('Bölüm yeniden başladı.', 1600); });
   el.btnSound.addEventListener('click', () => { sfx.unlock(); sfx.setMuted(!sfx.muted); setSoundIcon(); });
-  $('#btnHome').addEventListener('click', () => { sfx.unlock(); if (G.won && G.busy) return; showHome('home'); });
+  /* ---- Pause: freezes the clock, blocks the board, opens #pauseOv ---- */
+  const pauseOv = $('#pauseOv');
+  function pauseClock() { if (G.pauseAt == null) G.pauseAt = performance.now(); }
+  function resumeClock() {
+    if (G.pauseAt == null) return;
+    if (G.t0) G.t0 += performance.now() - G.pauseAt;
+    G.pauseAt = null;
+  }
+  function openPause() {
+    if (G.screen !== 'play' || G.won || !pauseOv.hidden) return;
+    stopTut(false); cancelLane(); closeQueueSheet();
+    pauseClock();
+    pauseOv.hidden = false; sfx.pop();
+    $('#btnResume').focus({ preventScroll: true });
+  }
+  function closePause() { pauseOv.hidden = true; resumeClock(); scheduleTut(500); }
+  $('#btnPause').addEventListener('click', () => { sfx.unlock(); openPause(); });
+  $('#btnResume').addEventListener('click', () => { sfx.unlock(); sfx.click(); closePause(); });
+  $('#btnPauseRestart').addEventListener('click', () => { sfx.unlock(); pauseOv.hidden = true; G.pauseAt = null; if (G.won && G.busy) return; loadLevel(G.idx); toast('Bölüm yeniden başladı.', 1600); });
+  $('#btnHome').addEventListener('click', () => { sfx.unlock(); pauseOv.hidden = true; G.pauseAt = null; if (G.won && G.busy) return; showHome('home'); });
+  pauseOv.addEventListener('click', e => { if (e.target === pauseOv) closePause(); });
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape' || G.screen !== 'play') return;
+    if (!pauseOv.hidden) closePause(); else if (el.helpOv.hidden && el.buyOv.hidden && el.failOv.hidden) openPause();
+  });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && G.screen === 'play' && !G.won && G.t0) openPause(); });
+  if ($('#hudCoinBtn')) $('#hudCoinBtn').addEventListener('click', () => { sfx.unlock(); toast(`Jetonun: ${save.coins} · Bölüm bitirerek jeton kazanabilirsin.`); });
   $('#btnPlay').addEventListener('click', () => { sfx.unlock(); sfx.pop(); enterPlay(nextLevel() - 1); });
   el.btnChest.addEventListener('click', () => { sfx.unlock(); openChest(); });
   el.tabbar.addEventListener('click', e => { const b = e.target.closest('.tab'); if (!b) return; sfx.unlock(); sfx.click(); setTab(b.dataset.tab); });
@@ -2287,7 +2363,7 @@
   $('#btnSettings').addEventListener('click', () => { sfx.unlock(); setSoundIcon(); $('#setReset').dataset.armed = ''; $('#setReset').textContent = 'İlerlemeyi sıfırla'; el.settingsOv.hidden = false; });
   $('#setClose').addEventListener('click', () => { el.settingsOv.hidden = true; });
   el.settingsOv.addEventListener('click', e => { if (e.target === el.settingsOv) el.settingsOv.hidden = true; });
-  $('#setTips').addEventListener('click', () => { resetTuts(); toast('El ipuçları 1, 4, 21, 36 ve 61. bölümlerde yeniden görünecek.', 3000); });
+  $('#setTips').addEventListener('click', () => { resetTuts(); toast('El ipuçları 1, 2, 4, 21, 36 ve 61. bölümlerde yeniden görünecek.', 3000); });
   $('#setReset').addEventListener('click', e => {
     const b = e.currentTarget;
     if (!b.dataset.armed) { b.dataset.armed = '1'; b.textContent = 'Emin misin? Tekrar dokun: yıldızlar ve jetonlar silinir'; return; }
@@ -2302,16 +2378,36 @@
   $('#buyNo').addEventListener('click', () => { el.buyOv.hidden = true; });
   el.buyOv.addEventListener('click', e => { if (e.target === el.buyOv) el.buyOv.hidden = true; });
   el.result.addEventListener('click', e => { if (e.target.closest('#btnResReplay')) { if (resReady) leaveResult(true); else leaveResult(false); return; } leaveResult(false); });
-  $('#btnHelp').addEventListener('click', () => { stopTut(true); cancelLane(); el.helpOv.hidden = false; $('#btnStart').focus({ preventScroll: true }); });
-  $('#btnStart').addEventListener('click', () => { sfx.unlock(); el.helpOv.hidden = true; try { localStorage.setItem('pj-seen-help', '1'); } catch (e) { /* ignore */ } toast(G.level.cfg.intro || 'İyi paketlemeler!', 4200); scheduleTut(700); });
+  $('#btnHelp').addEventListener('click', () => { pauseOv.hidden = true; pauseClock(); stopTut(true); cancelLane(); el.helpOv.hidden = false; $('#btnStart').focus({ preventScroll: true }); });
+  $('#btnStart').addEventListener('click', () => { sfx.unlock(); el.helpOv.hidden = true; try { localStorage.setItem('pj-seen-help', '1'); } catch (e) { /* ignore */ } if (G.screen === 'play') { resumeClock(); scheduleTut(500); } });
   $('#btnTips').addEventListener('click', () => {
     resetTuts(); el.helpOv.hidden = true; scheduleTut(500);
-    toast(TUT_AT[G.idx + 1] ? 'El ipuçları yeniden açıldı.' : 'El ipuçları yeniden açıldı: 1, 4, 21, 36 ve 61. bölümlerde görünür.', 3200);
+    toast(TUT_AT[G.idx + 1] ? 'El ipuçları yeniden açıldı.' : 'El ipuçları yeniden açıldı: 1, 2, 4, 21, 36 ve 61. bölümlerde görünür.', 3200);
   });
   el.btnQueue.addEventListener('click', () => { sfx.unlock(); openQueueSheet(); });
   $('#queueClose').addEventListener('click', closeQueueSheet);
   el.queueOv.addEventListener('click', e => { if (e.target === el.queueOv) closeQueueSheet(); });
   el.belt.addEventListener('scroll', updateBeltFade, { passive: true });
+  /* swipe the dock to peek at what's coming: touch scrolls natively, mouse drags, wheel scrolls sideways */
+  (() => {
+    const b = el.belt; let pd = null;
+    b.addEventListener('pointerdown', e => {
+      if (e.pointerType !== 'mouse' || e.button !== 0 || e.target.closest('#headTray')) return;
+      pd = { x: e.clientX, left: b.scrollLeft, moved: false, id: e.pointerId };
+    });
+    window.addEventListener('pointermove', e => {
+      if (!pd || e.pointerId !== pd.id) return;
+      const dx = e.clientX - pd.x;
+      if (!pd.moved && Math.abs(dx) > 4) { pd.moved = true; b.classList.add('grabbing'); b.style.scrollSnapType = 'none'; }
+      if (pd.moved) b.scrollLeft = pd.left - dx;
+    });
+    const end = () => { if (!pd) return; if (pd.moved) { b.classList.remove('grabbing'); b.style.scrollSnapType = ''; } pd = null; };
+    window.addEventListener('pointerup', end); window.addEventListener('pointercancel', end);
+    b.addEventListener('wheel', e => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX) || b.scrollWidth <= b.clientWidth) return;
+      e.preventDefault(); b.scrollLeft += e.deltaY;
+    }, { passive: false });
+  })();
   $('#stamp').addEventListener('click', () => {
     const lv = G.level, n = lv.queue.filter(q => q.type === 'block').length;
     const gaps = lv.gapCount ? `${lv.gapCount} kare planlı boşluk bırakılarak` : 'tek boşluk bırakmadan';
@@ -2390,7 +2486,7 @@
     lid.pivot.rotation.x = -1.95;
     const groups = Array.from(meshes.values()).map(m => m.group);
     const tl = gsap.timeline({ onComplete: () => { unlock(); setTimeout(showResult, REDUCED ? 0 : 900); } });
-    tl.add(() => { sfx.win(); toast((G.level.gapCount === 0 ? 'PERFECT PACK!' : 'PACKED!') + ' Bavul kapanıyor…', 1600); }, 0.1)
+    tl.add(() => { sfx.win(); toast((G.level.gapCount === 0 ? 'PERFECT PACK!' : 'PACKED!') + ' Kutu kapanıyor…', 1600, 'win'); }, 0.1)
       .to(lid.mats, { opacity: (i) => i === 0 ? 0.5 : 0.95, duration: 0.3 }, 0.2)
       .to(lid.pivot.rotation, { x: 0, duration: REDUCED ? 0.01 : 0.62, ease: 'power2.in' }, 0.3)
       .add(() => {
@@ -2448,7 +2544,7 @@
   /* ======================================================================
      LEVEL LIFECYCLE
      ====================================================================== */
-  let introTimer = 0;
+  let introTimer = 0, spikeTimer = 0;
   function loadLevel(i) {
     stopTut(false); cancelLane(); closeQueueSheet();
     gsap.globalTimeline.clear();
@@ -2465,13 +2561,39 @@
     if (ghost) { root.remove(ghost.group); ghost = null; }
     buildSuitcase();
     syncAll(false);
-    $('#lvlNum').textContent = String(i + 1).padStart(2, '0');
+    $('#lvlNum').textContent = String(i + 1);
+    if ($('#hudTimer')) $('#hudTimer').textContent = '00:00';
+    pauseOv.hidden = true;
     $('#lvlName').textContent = lv.cfg.name;
     $('#lvlCode').textContent = lv.cfg.code;
     $('#lvlSize').textContent = lv.W + '×' + lv.H;
+    const tier = lv.cfg.tier || 'normal';
+    const pill = $('#lvlPill'), badge = $('#tierBadge');
+    if (pill && badge) {
+      pill.className = 'lean-pill level-pill ' + tier;
+      if (tier === 'super') { badge.hidden = false; badge.className = 'tier-badge super'; badge.textContent = '💀 SÜPER ZOR'; }
+      else if (tier === 'hard') { badge.hidden = false; badge.className = 'tier-badge hard'; badge.textContent = '🔥 ZOR'; }
+      else if (tier === 'easy') { badge.hidden = false; badge.className = 'tier-badge easy'; badge.textContent = 'FERAH'; }
+      else { badge.hidden = true; }
+    }
+    G.pauseAt = null;
+    guide.mode = null; guide.prev = null; clearTimeout(guide.timer); clearTimeout(toastTimer); el.toast.classList.remove('show');
+    /* the message line always keeps its slot in play, so the board never jumps when a hint appears */
+    if (lv.cfg.intro) setGuide(lv.cfg.intro, 'intro', null, (lv.cfg.tier === 'super' || lv.cfg.tier === 'hard') ? lv.cfg.tier : '');
+    else { el.guideText.textContent = ''; el.guideBanner.hidden = false; el.guideBanner.classList.add('gone'); }
+    const sb = $('#spikeBanner'), sc = $('#spikeCard'), st = $('#spikeTitle'), ss = $('#spikeSub');
+    if (sb && (tier === 'hard' || tier === 'super')) {
+      sc.className = 'spike-card ' + tier;
+      ss.textContent = tier === 'super' ? `BÖLÜM ${i + 1} · SIFIR BOŞLUK` : `BÖLÜM ${i + 1} · AZ BOŞLUK`;
+      st.textContent = tier === 'super' ? '💀 SÜPER ZOR' : '🔥 ZOR BÖLÜM';
+      sb.hidden = false;
+      sb.classList.remove('out');
+      clearTimeout(spikeTimer); spikeTimer = setTimeout(() => { sb.classList.add('out'); spikeTimer = setTimeout(() => { sb.hidden = true; }, 320); }, 1250);
+    } else if (sb) {
+      sb.hidden = true;
+    }
     renderQueue(); updateHUD(); fitCamera();
     clearTimeout(introTimer);
-    if (lv.cfg.intro && el.helpOv.hidden) introTimer = setTimeout(() => toast(lv.cfg.intro, 4200), 900);
     if (!REDUCED) {
       lock();
       let k = 0;
@@ -2487,7 +2609,7 @@
       if (!k) tl.to({}, { duration: 0.1 });
     }
     try { localStorage.setItem('pj-level', String(i)); } catch (e) { /* ignore */ }
-    scheduleTut(1800);
+    scheduleTut(REDUCED ? 150 : 350);
   }
 
   /* ======================================================================
@@ -2497,6 +2619,12 @@
   function tick(now) {
     requestAnimationFrame(tick);
     const dt = Math.min(0.05, (now - last) / 1000), t = now / 1000; last = now;
+    if (G.screen === 'play' && !G.won && $('#hudTimer')) {
+      const sec = G.t0 ? Math.max(0, Math.floor(((G.pauseAt || now) - G.t0) / 1000)) : 0;
+      const mm = String(Math.floor(sec / 60)).padStart(2, '0'), ss = String(sec % 60).padStart(2, '0');
+      const tvStr = mm + ':' + ss;
+      if ($('#hudTimer').textContent !== tvStr) $('#hudTimer').textContent = tvStr;
+    }
     for (const v of gateViews) {
       v.flash = Math.max(0, v.flash - dt * 2.2);
       if (v.valid) {
@@ -2554,6 +2682,7 @@
     $('#helpItems').innerHTML = ['perfume', 'passport', 'console', 'towel', 'kit', 'organizer', 'jewelry', 'lid', 'divider']
       .map(k => `<img src="${iconOf(k)}" alt="" title="${ITEM_NAME[k]}">`).join('');
     $('#hCoinIco').innerHTML = coinSVG(32);
+    if ($('#hudCoinIco')) $('#hudCoinIco').innerHTML = coinSVG(26);
     $('#chestIco').innerHTML = CHEST_SVG;
     document.querySelectorAll('#resStars .rstar').forEach(n => { n.innerHTML = bigStarSVG(); });
     $('#resPile').innerHTML = [[8, 40, 52], [44, 44, 56], [80, 40, 52], [26, 18, 54], [62, 18, 54], [44, 0, 58]].map(([x, y, z]) => `<span style="position:absolute;left:${x}px;top:${y}px">${coinSVG(z)}</span>`).join('');
