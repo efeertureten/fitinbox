@@ -2738,6 +2738,7 @@ window.Native.ready(function () {
     const ro = new ResizeObserver(() => fitView()); ro.observe(app); ro.observe(el.hudBottom); ro.observe(el.hudTop); ro.observe(el.home);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { heroTagFor = 0; setHeroLevel(nextLevel()); fitView(); });
     requestAnimationFrame(tick);
+    app.classList.add('ready');
   }
   const hot = !Native.isNative && window.claude && window.claude.hot;
   if (hot && hot.snapshot) { try { hot.snapshot(() => ({ idx: G.idx, screen: G.screen })); } catch (e) { /* ignore */ } }
