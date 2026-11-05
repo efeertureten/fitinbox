@@ -5,11 +5,14 @@
   "description": "Fit in Box: 3D bavul doldurma bulmacası (web + Capacitor iOS)",
   "scripts": {
     "build:app": "node tools/build.js --target app && npx cap sync",
-    "ios": "npm run build:app && npx cap open ios"
+    "ios": "npm run build:app && npx cap open ios",
+    "test:setup": "playwright install webkit chromium",
+    "test": "node tools/build.js && node tools/build.js --target app && node tests/run.js"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.6.0",
     "gsap": "3.12.5",
+    "playwright": "^1.64.1",
     "three": "0.128.0"
   },
   "dependencies": {

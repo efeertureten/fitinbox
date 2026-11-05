@@ -90,6 +90,7 @@ tools/make_icons.py   kesimleri assets/items ve src/icons.js olarak kaydeder
 tools/build.js        hepsini tek dosya index.html olarak birleştirir (--target app: çevrimdışı www/)
 vendor/               uygulama için yerel kopyalar: three.js r128, GSAP 3.12.5, fontlar (OFL lisanslarıyla)
 ios/                  Capacitor Xcode projesi
+tests/run.js          uçtan uca test: uygulama paketi ve web build'i, WebKit ve Chromium'da
 ```
 
 ### iOS uygulaması
@@ -103,6 +104,15 @@ npm run ios           # üstüne Xcode'u açar (yalnızca macOS)
 ```
 
 `vendor/three.min.js` ve `vendor/gsap.min.js` aynı sürümlü npm paketlerinden, fontlar Google Fonts'tan (yalnızca latin ve latin-ext) alındı. Sürümü değiştirme: oyun bu sürümlerle test edildi.
+
+### Test
+
+```
+npm run test:setup    # ilk seferde: WebKit ve Chromium'u indirir
+npm test              # iki build'i üretir, iki motorda uçtan uca dener (birkaç dakika)
+```
+
+Test, iOS'un gerçek JS köprüsünü (`native-bridge.js`) kullanır, yalnızca altındaki Swift katmanını taklit eder. Xcode derlemesinin, gerçek eklentilerin ve cihaz denemesinin yerine geçmez. Ekran görüntüleri `tests/output/` altına yazılır. `src/levels.baked.js` değişirse test kalır: bölümleri bilerek yeniden ürettiysen `tests/run.js`'teki özeti güncelle.
 
 Yeni bir eşya görseli geldiğinde (dosya adları `perfume`, `passport`, `console`, `kit`, `organizer`, `towel`, `jewelry`, `divider`; `.jpg`; takı kutusu görseli kapağı da içerir):
 
