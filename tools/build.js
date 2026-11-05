@@ -39,6 +39,9 @@ ${read('src/hud-icons.js')}
 ${read('src/home-icons.js')}
 </script>
 <script>
+${read('src/native.js')}
+</script>
+<script>
 ${read('src/game.js')}
 </script>
 </body>

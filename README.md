@@ -34,7 +34,7 @@ Bavuldaki eşyalar bu tasarımlara göre Three.js'te modellenir; kuyruk tepsisin
 - Jeton: bir bölümü ilk bitirişte 10 + yıldız başına 5. Tekrar oynayınca sadece yeni kazanılan yıldız başına 5.
 - **Yıldız sandığı:** her 15 yıldızda açılır, 60 jeton ve sırayla bir yedek booster verir.
 - Booster bitince düğmesinde **+** görünür. Dokununca jetonla alma penceresi açılır (Geri Al 30, Silkele 50, Vakum 60). Bölümün kendi hakları bitince yedekler kullanılır.
-- İlerleme tarayıcının `localStorage`'ında tutulur (`pj-save-v1`). Ayarlar'dan ses, el ipuçları ve ilerlemeyi sıfırlama yönetilir.
+- İlerleme tarayıcının `localStorage`'ında tutulur (`pj-save-v1`); uygulamada iOS bu depoyu silebileceği için Preferences'a da yazılır ve açılışta geri yüklenir. Ayarlar'dan ses, titreşim, el ipuçları ve ilerlemeyi sıfırlama yönetilir.
 
 ### Booster'lar
 
@@ -80,6 +80,7 @@ src/engine.js         kurallar ve tersine üretici
 src/levels.js         100 bölümlük eğri: designLevel(n)
 src/levels.baked.js   üretilmiş {variant, attempt} tablosu (tools/bake.js yazar)
 src/game.js           Three.js sahnesi, kontroller, arayüz
+src/native.js         Capacitor eklentileri (titreşim, kalıcı kayıt, yaşam döngüsü); web'de güvenli yedek
 src/page.html         HTML ve CSS
 src/icons.js          kuyruk ikonları (tools/make_icons.py yazar)
 assets/items/         eşya tasarımlarının arka planı silinmiş halleri (512 px WebP)

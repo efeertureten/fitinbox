@@ -1,9 +1,10 @@
 /* ==========================================================================
    PACK JAM — 3D stage, input, juice, boosters, win/fail flow.
    ========================================================================== */
-(function () {
+window.Native.ready(function () {
   'use strict';
   const E = window.PJ;
+  const Native = window.Native, store = Native.store;
   const $ = s => document.querySelector(s);
   const REDUCED = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 
@@ -47,7 +48,7 @@
           const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
         } catch (e) { ctx = null; }
       }
-      if (ctx && ctx.state === 'suspended') ctx.resume();
+      if (ctx && ctx.state !== 'running') ctx.resume();   // iOS also reports 'interrupted'
     }
     function env(g, t, a, peak, dec) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + dec); }
     function tone(f, dur, type, vol, fEnd, delay) {
@@ -67,7 +68,9 @@
     return {
       unlock,
       get muted() { return muted; },
-      setMuted(v) { muted = v; if (master) master.gain.value = v ? 0 : 0.55; try { localStorage.setItem('pj-muted', v ? '1' : '0'); } catch (e) { /* ignore */ } },
+      setMuted(v) { muted = v; if (master) master.gain.value = v ? 0 : 0.55; store.set('pj-muted', v ? '1' : '0'); },
+      suspend() { if (ctx) ctx.suspend(); },
+      resume() { if (ctx) ctx.resume(); },
       thock(k) { k = k || 1; tone(150 * k, 0.15, 'sine', 0.42, 58); noise(0.06, 'lowpass', 1500, 280, 0.26); },
       click() { tone(1800, 0.025, 'square', 0.045); noise(0.025, 'highpass', 3200, null, 0.1); },
       pick() { tone(520, 0.06, 'sine', 0.1, 760); },
@@ -88,7 +91,11 @@
       coin() { for (let k = 0; k < 4; k++) { tone(1500 + k * 260, 0.06, 'square', 0.035, null, k * 0.07); tone(2600 + k * 200, 0.08, 'sine', 0.05, null, k * 0.07 + 0.02); } }
     };
   })();
-  const haptic = ms => { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* not allowed */ } };
+  /* Ses or Titreşim off silences haptics; Native picks the strength per platform */
+  let hapticsOn = true;
+  try { hapticsOn = localStorage.getItem('pj-haptics') !== '0'; } catch (e) { /* storage blocked */ }
+  const haptic = ms => { if (hapticsOn && !sfx.muted) Native.haptic(ms); };
+  const hapticWin = () => { if (hapticsOn && !sfx.muted) Native.hapticWin(); };
 
   /* ======================================================================
      THREE SETUP
@@ -862,7 +869,7 @@
     belt: $('#belt'), hint: $('#hint'), fillBar: $('#fillBar'), fillPct: $('#fillPct'), fillCells: $('#fillCells'),
     nUndo: $('#nUndo'), nVac: $('#nVac'), nShake: $('#nShake'), bUndo: $('#bUndo'), bVac: $('#bVac'), bShake: $('#bShake'),
     toast: $('#toast'), failOv: $('#failOv'), helpOv: $('#helpOv'), shakePick: $('#shakePick'),
-    hudTop: $('#hudTop'), hudBottom: $('#hudBottom'), btnSound: $('#setSound'), fillTarget: $('#fillTarget'), gapChip: $('#gapChip'),
+    hudTop: $('#hudTop'), hudBottom: $('#hudBottom'), btnSound: $('#setSound'), btnHaptics: $('#setHaptics'), fillTarget: $('#fillTarget'), gapChip: $('#gapChip'),
     queueOv: $('#queueOv'), queueGrid: $('#queueGrid'), btnQueue: $('#btnQueue'), qCount: $('#qCount'),
     home: $('#home'), homeTop: $('#homeTop'), homeCta: $('#homeCta'), tabbar: $('#tabbar'), panelShop: $('#panelShop'), panelMap: $('#panelMap'),
     btnChest: $('#btnChest'), result: $('#result'), buyOv: $('#buyOv'), settingsOv: $('#settingsOv')
@@ -879,7 +886,9 @@
     spring: '<svg viewBox="0 0 44 20"><path d="M4 10l5-7 6 14 6-14 6 14 6-14 6 7" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     springV: '<svg viewBox="0 0 20 44"><path d="M10 4l-7 5 14 6-14 6 14 6-14 6 7 6" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     soundOn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>',
-    soundOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M17 9l5 6M22 9l-5 6"/></svg>'
+    soundOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M17 9l5 6M22 9l-5 6"/></svg>',
+    hapticsOn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="4" width="8" height="16" rx="2" fill="currentColor"/><path d="M4 9v6M20 9v6"/></svg>',
+    hapticsOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="4" width="8" height="16" rx="2" fill="currentColor"/><path d="M3 3l18 18"/></svg>'
   };
   function itemLabel(it, spoken) {
     const k = itemOf(it), name = ITEM_NAME[k] || (it.w + '×' + it.h);
@@ -1020,6 +1029,7 @@
     if (G.moves >= 3) { if (guide.mode === 'intro') fadeGuide(400); else if (guide.prev && guide.prev.mode === 'intro') guide.prev = null; }
   }
   function setSoundIcon() { el.btnSound.innerHTML = (sfx.muted ? SVG.soundOff : SVG.soundOn) + `<span>Ses: ${sfx.muted ? 'Kapalı' : 'Açık'}</span>`; }
+  function setHapticsIcon() { el.btnHaptics.innerHTML = (hapticsOn ? SVG.hapticsOn : SVG.hapticsOff) + `<span>Titreşim: ${hapticsOn ? 'Açık' : 'Kapalı'}</span>`; }
 
   /* ======================================================================
      CAMERA FIT — frame the suitcase inside the space between the HUD bands
@@ -1650,12 +1660,12 @@
   function markTut(k) {
     if (!tutMem[k] && ((guide.mode === 'tut' && guide.kind === k) || (guide.mode === 'flash' && guide.prev && guide.prev.kind === k))) { guide.prev = null; setGuide(GUIDE_OK[k], 'ok'); fadeGuide(2600); }
     tutMem[k] = true;
-    try { localStorage.setItem('pj-tut-' + k, '1'); } catch (e) { /* ignore */ }
+    store.set('pj-tut-' + k, '1');
     if (tut.kind === k) stopTut(false);
   }
   function resetTuts() {
     tut.quietUntil = 0;
-    for (const k of Object.values(TUT_AT)) { delete tutMem[k]; try { localStorage.removeItem('pj-tut-' + k); } catch (e) { /* ignore */ } }
+    for (const k of Object.values(TUT_AT)) { delete tutMem[k]; store.remove('pj-tut-' + k); }
   }
   /* after the player interrupts a demo, give them a quiet spell before it returns */
   function scheduleTut(ms) { clearTimeout(tut.timer); tut.timer = setTimeout(tryTut, Math.max(ms, tut.quietUntil - performance.now())); }
@@ -1876,7 +1886,7 @@
     return s;
   }
   const save = loadSave();
-  function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* storage blocked: progress lives for this session */ } }
+  function persist() { store.set(SAVE_KEY, JSON.stringify(save)); }
   function totalStars() { let t = 0; for (const k in save.stars) if (+k <= MAX_LEVEL) t += save.stars[k]; return t; }
   function chestState() { const t = totalStars(), into = t - save.chests * CHEST_EVERY; return { into: Math.max(0, into), ready: into >= CHEST_EVERY }; }
 
@@ -2185,7 +2195,7 @@
     save.coins += coins;
     save.unlocked = Math.max(save.unlocked, n + 1);
     persist();
-    try { localStorage.setItem('pj-level', String(save.unlocked - 1)); } catch (e) { /* ignore */ }
+    store.set('pj-level', String(save.unlocked - 1));
     const secs = G.t0 ? (performance.now() - G.t0) / 1000 : 0;
     const total = G.st.W * G.st.H, pct = Math.round(E.filledCount(G.st) / total * 100), zero = G.level.gapCount === 0;
     $('#resTitle').textContent = stars === 3 ? 'Muhteşem!' : stars === 2 ? 'Harika!' : 'Paketlendi!';
@@ -2349,6 +2359,7 @@
   });
   $('#btnRestart').addEventListener('click', () => { sfx.unlock(); if (G.won && G.busy) return; loadLevel(G.idx); toast('Bölüm yeniden başladı.', 1600); });
   el.btnSound.addEventListener('click', () => { sfx.unlock(); sfx.setMuted(!sfx.muted); setSoundIcon(); });
+  el.btnHaptics.addEventListener('click', () => { sfx.unlock(); hapticsOn = !hapticsOn; store.set('pj-haptics', hapticsOn ? '1' : '0'); setHapticsIcon(); haptic(15); });
   /* ---- Pause: freezes the clock, blocks the board, opens #pauseOv ---- */
   const pauseOv = $('#pauseOv');
   function pauseClock() { if (G.pauseAt == null) G.pauseAt = performance.now(); }
@@ -2374,7 +2385,9 @@
     if (e.key !== 'Escape' || G.screen !== 'play') return;
     if (!pauseOv.hidden) closePause(); else if (el.helpOv.hidden && el.buyOv.hidden && el.failOv.hidden) openPause();
   });
-  document.addEventListener('visibilitychange', () => { if (document.hidden && G.screen === 'play' && !G.won && G.t0) openPause(); });
+  const autoPause = () => { if (G.screen === 'play' && !G.won && G.t0) openPause(); };
+  document.addEventListener('visibilitychange', () => { if (document.hidden) autoPause(); });
+  Native.onAppState(active => { if (active) sfx.resume(); else { autoPause(); sfx.suspend(); } });
   if ($('#hudCoinBtn')) $('#hudCoinBtn').addEventListener('click', () => { sfx.unlock(); toast(`Jetonun: ${save.coins} · Bölüm bitirerek jeton kazanabilirsin.`); });
   $('#btnPlay').addEventListener('click', () => { sfx.unlock(); sfx.pop(); enterPlay(nextLevel() - 1); });
   el.btnChest.addEventListener('click', () => { sfx.unlock(); openChest(); });
@@ -2390,7 +2403,7 @@
     const k = b.dataset.buy, before = save.coins;
     if (buyBoost(k)) { toast(`+1 ${BOOST_NAME[k]} yedeğe eklendi.`); renderShop(); animateCount($('#hCoins'), before, save.coins, 500); }
   });
-  $('#btnSettings').addEventListener('click', () => { sfx.unlock(); setSoundIcon(); $('#setReset').dataset.armed = ''; $('#setReset').textContent = 'İlerlemeyi sıfırla'; el.settingsOv.hidden = false; });
+  $('#btnSettings').addEventListener('click', () => { sfx.unlock(); setSoundIcon(); setHapticsIcon(); $('#setReset').dataset.armed = ''; $('#setReset').textContent = 'İlerlemeyi sıfırla'; el.settingsOv.hidden = false; });
   $('#setClose').addEventListener('click', () => { el.settingsOv.hidden = true; });
   el.settingsOv.addEventListener('click', e => { if (e.target === el.settingsOv) el.settingsOv.hidden = true; });
   $('#setTips').addEventListener('click', () => { resetTuts(); toast('El ipuçları 1, 2, 4, 21, 36 ve 61. bölümlerde yeniden görünecek.', 3000); });
@@ -2398,7 +2411,7 @@
     const b = e.currentTarget;
     if (!b.dataset.armed) { b.dataset.armed = '1'; b.textContent = 'Emin misin? Tekrar dokun: yıldızlar ve jetonlar silinir'; return; }
     Object.assign(save, { stars: {}, best: {}, coins: 50, extras: { undo: 0, vac: 0, shake: 0 }, chests: 0, unlocked: 1 }); persist(); resetTuts();
-    try { localStorage.setItem('pj-level', '0'); } catch (err) { /* ignore */ }
+    store.set('pj-level', '0');
     el.settingsOv.hidden = true; heroTagFor = 0; showHome('home'); toast('İlerleme sıfırlandı.');
   });
   $('#buyOk').addEventListener('click', () => {
@@ -2409,7 +2422,7 @@
   el.buyOv.addEventListener('click', e => { if (e.target === el.buyOv) el.buyOv.hidden = true; });
   el.result.addEventListener('click', e => { if (e.target.closest('#btnResReplay')) { if (resReady) leaveResult(true); else leaveResult(false); return; } leaveResult(false); });
   $('#btnHelp').addEventListener('click', () => { pauseOv.hidden = true; pauseClock(); stopTut(true); cancelLane(); el.helpOv.hidden = false; $('#btnStart').focus({ preventScroll: true }); });
-  $('#btnStart').addEventListener('click', () => { sfx.unlock(); el.helpOv.hidden = true; try { localStorage.setItem('pj-seen-help', '1'); } catch (e) { /* ignore */ } if (G.screen === 'play') { resumeClock(); scheduleTut(500); } });
+  $('#btnStart').addEventListener('click', () => { sfx.unlock(); el.helpOv.hidden = true; store.set('pj-seen-help', '1'); if (G.screen === 'play') { resumeClock(); scheduleTut(500); } });
   $('#btnTips').addEventListener('click', () => {
     resetTuts(); el.helpOv.hidden = true; scheduleTut(500);
     toast(TUT_AT[G.idx + 1] ? 'El ipuçları yeniden açıldı.' : 'El ipuçları yeniden açıldı: 1, 2, 4, 21, 36 ve 61. bölümlerde görünür.', 3200);
@@ -2520,7 +2533,7 @@
       .to(lid.mats, { opacity: (i) => i === 0 ? 0.5 : 0.95, duration: 0.3 }, 0.2)
       .to(lid.pivot.rotation, { x: 0, duration: REDUCED ? 0.01 : 0.62, ease: 'power2.in' }, 0.3)
       .add(() => {
-        sfx.thump(); haptic(30);
+        sfx.thump(); hapticWin();
         groups.forEach(g => { gsap.killTweensOf(g.scale); g.scale.set(1, 1, 1); });
         if (!REDUCED) {
           gsap.to(groups.map(g => g.scale), { y: 0.86, duration: 0.1, ease: 'power2.out', yoyo: true, repeat: 1 });
@@ -2638,7 +2651,7 @@
       tl.to(suit.scale, { x: 1, y: 1, z: 1, duration: 0.5, ease: 'back.out(2)' }, 0);
       if (!k) tl.to({}, { duration: 0.1 });
     }
-    try { localStorage.setItem('pj-level', String(i)); } catch (e) { /* ignore */ }
+    store.set('pj-level', String(i));
     scheduleTut(REDUCED ? 150 : 350);
   }
 
@@ -2708,7 +2721,7 @@
 
   /* ---------- boot ---------- */
   function start(data) {
-    setSoundIcon();
+    setSoundIcon(); setHapticsIcon();
     $('#helpItems').innerHTML = ['perfume', 'passport', 'console', 'towel', 'kit', 'organizer', 'jewelry', 'lid', 'divider']
       .map(k => `<img src="${iconOf(k)}" alt="" title="${ITEM_NAME[k]}">`).join('');
     $('#hCoinIco').innerHTML = Q8.gcoin(true);
@@ -2718,7 +2731,7 @@
     document.querySelectorAll('#resStars .rstar').forEach(n => { n.innerHTML = bigStarSVG(); });
     $('#resPile').innerHTML = [[8, 40, 52], [44, 44, 56], [80, 40, 52], [26, 18, 54], [62, 18, 54], [44, 0, 58]].map(([x, y, z]) => `<span style="position:absolute;left:${x}px;top:${y}px">${coinSVG(z)}</span>`).join('');
     buildHero();
-    const q = /[?&#]level=(\d+)/.exec(location.search + location.hash);
+    const q = !Native.isNative && /[?&#]level=(\d+)/.exec(location.search + location.hash);   // debug: web only
     if (q) enterPlay(Math.max(1, parseInt(q[1], 10)) - 1);
     else if (data && data.screen === 'play' && typeof data.idx === 'number') enterPlay(data.idx);
     else showHome('home');
@@ -2726,7 +2739,7 @@
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { heroTagFor = 0; setHeroLevel(nextLevel()); fitView(); });
     requestAnimationFrame(tick);
   }
-  const hot = window.claude && window.claude.hot;
+  const hot = !Native.isNative && window.claude && window.claude.hot;
   if (hot && hot.snapshot) { try { hot.snapshot(() => ({ idx: G.idx, screen: G.screen })); } catch (e) { /* ignore */ } }
   if (hot && hot.ready) hot.ready(start); else start((hot && hot.data) || {});
-})();
+});

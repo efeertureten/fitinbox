@@ -29,7 +29,7 @@
 html { box-sizing: border-box; height: 100%; background: var(--sky-2); }
 *, *::before, *::after { box-sizing: inherit; }
 body { height: 100%; margin: 0; overflow: hidden; background: var(--sky-2); color: var(--ink); font-family: var(--f-ui);
-  -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+  -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
 button { font: inherit; color: inherit; }
 button:focus-visible { outline: 3px solid var(--gold-hi); outline-offset: 4px; }
 
@@ -1249,6 +1249,7 @@ button:focus-visible { outline: 3px solid var(--gold-hi); outline-offset: 4px; }
     <div class="card settings-card" role="dialog" aria-labelledby="setTitle">
       <h2 id="setTitle">Ayarlar</h2>
       <button class="btn set-row" id="setSound" type="button"></button>
+      <button class="btn set-row" id="setHaptics" type="button"></button>
       <button class="btn set-row" id="setTips" type="button">El ipuçlarını yeniden göster</button>
       <button class="btn set-row danger" id="setReset" type="button">İlerlemeyi sıfırla</button>
       <button class="btn primary" id="setClose" type="button">Tamam</button>
