@@ -1,0 +1,19 @@
+{
+  "name": "fit-in-box",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Fit in Box: 3D bavul doldurma bulmacası (web + Capacitor iOS)",
+  "scripts": {
+    "build:app": "node tools/build.js --target app && npx cap sync",
+    "ios": "npm run build:app && npx cap open ios"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.6.0",
+    "gsap": "3.12.5",
+    "three": "0.128.0"
+  },
+  "dependencies": {
+    "@capacitor/core": "^8.6.0",
+    "@capacitor/ios": "^8.6.0"
+  }
+}

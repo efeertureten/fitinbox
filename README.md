@@ -86,8 +86,22 @@ assets/items/         eşya tasarımlarının arka planı silinmiş halleri (512
 tools/bake.js         100 bölümü arar, doğrular, levels.baked.js ve levels.json yazar
 tools/cutout.py       eşya render'larını turkuaz stüdyo arka planından keser
 tools/make_icons.py   kesimleri assets/items ve src/icons.js olarak kaydeder
-tools/build.js        hepsini tek dosya index.html olarak birleştirir
+tools/build.js        hepsini tek dosya index.html olarak birleştirir (--target app: çevrimdışı www/)
+vendor/               uygulama için yerel kopyalar: three.js r128, GSAP 3.12.5, fontlar (OFL lisanslarıyla)
+ios/                  Capacitor Xcode projesi
 ```
+
+### iOS uygulaması
+
+Uygulama web sürümüyle aynı sayfadır; yalnızca CDN adresleri yerel `vendor/` yollarıyla değişir, böylece internetsiz açılır. Parametresiz `node tools/build.js` web için `index.html`'i aynen üretmeye devam eder.
+
+```
+npm install
+npm run build:app     # www/ üretir ve ios/ projesine kopyalar
+npm run ios           # üstüne Xcode'u açar (yalnızca macOS)
+```
+
+`vendor/three.min.js` ve `vendor/gsap.min.js` aynı sürümlü npm paketlerinden, fontlar Google Fonts'tan (yalnızca latin ve latin-ext) alındı. Sürümü değiştirme: oyun bu sürümlerle test edildi.
 
 Yeni bir eşya görseli geldiğinde (dosya adları `perfume`, `passport`, `console`, `kit`, `organizer`, `towel`, `jewelry`, `divider`; `.jpg`; takı kutusu görseli kapağı da içerir):
 

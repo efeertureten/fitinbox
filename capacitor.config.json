@@ -1,0 +1,10 @@
+{
+  "appId": "com.ergogames.fitinbox",
+  "appName": "Fit in Box",
+  "webDir": "www",
+  "backgroundColor": "#130B43",
+  "ios": {
+    "contentInset": "never",
+    "scrollEnabled": false
+  }
+}
