@@ -876,6 +876,7 @@ window.Native.ready(function () {
   };
   let toastTimer = 0;
   function toast(msg, ms, tone) {
+    if (tone === 'warn') PJA.reject(msg);
     if (G.screen === 'play' && !el.hudTop.hidden && el.guideBanner) { flashGuide(msg, ms || 2400, tone || 'info'); return; }
     el.toast.textContent = msg; el.toast.classList.add('show');
     clearTimeout(toastTimer); toastTimer = setTimeout(() => el.toast.classList.remove('show'), ms || 2400);
@@ -1658,6 +1659,7 @@ window.Native.ready(function () {
     guide.timer = setTimeout(() => { guide.mode = null; el.guideBanner.classList.add('gone'); }, ms || 0);
   }
   function markTut(k) {
+    if (!tutMem[k]) PJA.tutorial(k);
     if (!tutMem[k] && ((guide.mode === 'tut' && guide.kind === k) || (guide.mode === 'flash' && guide.prev && guide.prev.kind === k))) { guide.prev = null; setGuide(GUIDE_OK[k], 'ok'); fadeGuide(2600); }
     tutMem[k] = true;
     store.set('pj-tut-' + k, '1');
@@ -1893,6 +1895,7 @@ window.Native.ready(function () {
   /* boosters: the level's own allowance first, then spare ones bought in the market */
   const boostLeft = k => G.boost[k] + (save.extras[k] || 0);
   function useBoost(k) {
+    PJA.booster(k, G.boost[k] > 0 ? 'free' : 'owned');
     if (G.boost[k] > 0) G.boost[k]--;
     else if (save.extras[k] > 0) { save.extras[k]--; persist(); }
     G.boostersUsed++;
@@ -1902,6 +1905,7 @@ window.Native.ready(function () {
   function offerBoost(k) {
     buyKind = k;
     const price = PRICES[k], can = save.coins >= price;
+    PJA.offer(k, can);
     $('#buyTitle').textContent = `${BOOST_NAME[k]} hakkın bitti`;
     $('#buyText').textContent = can ? `${price} jetonla 1 ${BOOST_NAME[k]} al. Jetonun: ${save.coins}.` : `Yeterli jetonun yok: ${price} gerekiyor, sende ${save.coins} var. Bölüm bitirerek jeton kazanırsın.`;
     $('#buyIcon').innerHTML = boosterOrb(k);
@@ -1912,6 +1916,7 @@ window.Native.ready(function () {
     const price = PRICES[k];
     if (save.coins < price) { sfx.deny(); return false; }
     save.coins -= price; save.extras[k] = (save.extras[k] || 0) + 1; persist();
+    PJA.buy(k, price, G.screen);
     sfx.coin(); return true;
   }
 
@@ -2168,6 +2173,7 @@ window.Native.ready(function () {
     if (!ch.ready) { toast(`Sandık ${CHEST_EVERY} yıldızda açılır. ${CHEST_EVERY - ch.into} yıldız kaldı.`); sfx.deny(); return; }
     const before = save.coins, k = ['undo', 'vac', 'shake'][save.chests % 3];
     save.chests++; save.coins += 60; save.extras[k]++; persist();
+    PJA.chest({ chest_no: save.chests, kind: k, stars: totalStars() });
     sfx.win(); haptic(30);
     if (!REDUCED) gsap.fromTo(el.btnChest, { scale: 1 }, { scale: 1.25, duration: 0.15, yoyo: true, repeat: 1, ease: 'power2.out' });
     toast(`Yıldız sandığı açıldı: +60 jeton ve +1 ${BOOST_NAME[k]}.`, 3200);
@@ -2197,6 +2203,7 @@ window.Native.ready(function () {
     persist();
     store.set('pj-level', String(save.unlocked - 1));
     const secs = G.t0 ? (performance.now() - G.t0) / 1000 : 0;
+    PJA.levelWin({ stars, coins, first_clear: first, par_moves: target, clock_sec: Math.round(secs) });
     const total = G.st.W * G.st.H, pct = Math.round(E.filledCount(G.st) / total * 100), zero = G.level.gapCount === 0;
     $('#resTitle').textContent = stars === 3 ? 'Muhteşem!' : stars === 2 ? 'Harika!' : 'Paketlendi!';
     $('#resFill').textContent = zero ? 'ZERO GAP · %100 DOLU' : `%${pct} DOLU · HEDEF %${Math.round(G.level.targetCells / total * 100)}`;
@@ -2468,6 +2475,7 @@ window.Native.ready(function () {
     if (G.failOpen) return;
     G.failOpen = true;
     const head = G.queue[0];
+    PJA.levelFail({ reason: full ? 'full' : head && head.type === 'cap' ? 'lid_stuck' : 'no_entry' });
     let txt = 'Sıradaki eşya hiçbir kapıdan giremiyor ve içeride kıpırdayabilen blok kalmadı.';
     if (full) txt = 'Bavul doldu ama kuyrukta eşya kaldı. Havluları sıkıştırmak ya da Vakum kullanmak yer açar.';
     else if (head && head.type === 'cap') txt = 'Kapak sırada ama takı kutusu yerine oturmuyor ve hiçbir eşya kıpırdayamıyor.';
@@ -2597,6 +2605,7 @@ window.Native.ready(function () {
     G.idx = i; G.level = lv;
     G.st = { W: lv.W, H: lv.H, gates: lv.gates, blocks: E.cloneBlocks(lv.initial) };
     G.queue = lv.queue.slice(); G.undo = []; G.boost = Object.assign({}, BOOSTERS, lv.cfg.boosters || {});
+    PJA.levelStart({ level: i + 1, tier: lv.cfg.tier, grid: lv.W + 'x' + lv.H, gaps: lv.gapCount, queue: lv.queue.length });
     G.moves = 0; G.boostersUsed = 0; G.powerUsed = 0; G.t0 = null; G.nextId = 5000; G.mode = 'idle'; G.selected = false; G.busy = 0; G.won = false;
     lastHeadId = null; closeFail(); el.buyOv.hidden = true; el.shakePick.hidden = true; hideGhost();
     root.rotation.set(0, 0, 0); root.position.set(0, 0, 0); root.scale.set(1, 1, 1);
@@ -2662,6 +2671,7 @@ window.Native.ready(function () {
   function tick(now) {
     requestAnimationFrame(tick);
     const dt = Math.min(0.05, (now - last) / 1000), t = now / 1000; last = now;
+    PJA.frame();
     if (G.screen === 'play' && !G.won && $('#hudTimer')) {
       const sec = G.t0 ? Math.max(0, Math.floor(((G.pauseAt || now) - G.t0) / 1000)) : 0;
       const mm = String(Math.floor(sec / 60)).padStart(2, '0'), ss = String(sec % 60).padStart(2, '0');
@@ -2721,6 +2731,8 @@ window.Native.ready(function () {
 
   /* ---------- boot ---------- */
   function start(data) {
+    PJA.setStats(() => ({ moves: G.moves, boostersUsed: G.boostersUsed, powerUsed: G.powerUsed, queueLeft: G.queue ? G.queue.length : null,
+      fillPct: G.st ? Math.round(E.filledCount(G.st) / (G.st.W * G.st.H) * 100) : null }));
     setSoundIcon(); setHapticsIcon();
     $('#helpItems').innerHTML = ['perfume', 'passport', 'console', 'towel', 'kit', 'organizer', 'jewelry', 'lid', 'divider']
       .map(k => `<img src="${iconOf(k)}" alt="" title="${ITEM_NAME[k]}">`).join('');

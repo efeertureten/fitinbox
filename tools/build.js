@@ -10,6 +10,8 @@ const targetFlag = process.argv.indexOf('--target');
 const target = targetFlag < 0 ? 'web' : process.argv[targetFlag + 1];
 if (target !== 'web' && target !== 'app') throw new Error(`unknown --target: ${target}`);
 
+/* web playtest analytics: config only goes into the web build (the app build stays offline, see APP_SWAPS) */
+const ANALYTICS_CFG = `<script>window.PJ_ANALYTICS = ${JSON.stringify(JSON.parse(read('src/analytics.config.json')))};</script>\n`;
 const page = read('src/page.html').replace('<meta name="claude:viewport-fit-sides" content="cover">\n', '');
 const cut = page.search(/<svg width="0" height="0"|<div id="app">/);   // body starts at the shared SVG sprites (if any), else at #app
 const head = page.slice(0, cut).trim(), body = page.slice(cut).trim();
@@ -38,6 +40,9 @@ ${read('src/hud-icons.js')}
 <script>
 ${read('src/home-icons.js')}
 </script>
+${ANALYTICS_CFG}<script>
+${read('src/analytics.js')}
+</script>
 <script>
 ${read('src/native.js')}
 </script>
@@ -49,6 +54,8 @@ ${read('src/game.js')}
 `;
 
 const APP_SWAPS = [
+  // the store build sends nothing anywhere until monetisation/privacy is decided (IOS_MAGAZA_PLANI.md, Adım 3)
+  [ANALYTICS_CFG, ''],
   // WKWebView honours these limits, so pinch and double-tap zoom stay off in the app
   ['<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">',
    '<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">'],
