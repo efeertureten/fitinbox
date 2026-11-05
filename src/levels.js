@@ -9,8 +9,8 @@
 
   const PHASE_NAMES = ['', 'Temel Yerleşim', 'Akıcı Kutular', 'Plaj Havlusu', 'Takı Kutusu & Organizer', 'Usta Paketleyici'];
   const INTROS = {
-    1: '👆 Parlayan kapıya dokun: eşya içeri kayar!',
-    2: '👆 Kutudaki eşyayı tut ve boşluğa kaydır!',
+    1: 'Parlayan kapıya dokun: eşya içeri kayar!',
+    2: 'Kutudaki eşyayı tut ve boşluğa kaydır!',
     4: 'Yeni: El konsolu 1×3. Kaydırarak kapı önünü aç.',
     7: 'Kutu büyüdü: 6×6. Rahatça yerleştir.',
     13: 'Dar kapı: eşyanın eni kapıya sığmalı.',

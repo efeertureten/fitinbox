@@ -1609,11 +1609,11 @@
   /* ---- Guide banner: the text line that rides along with the ghost hand ---- */
   el.guideBanner = $('#guideBanner'); el.guideText = $('#guideText');
   const GUIDE = {
-    gate: '👆 Parlayan kapıya dokun: eşya içeri kayar!',
-    slide: '👆 Kutudaki bir eşyayı tut ve boşluğa kaydır!',
+    gate: 'Parlayan kapıya dokun: eşya içeri kayar!',
+    slide: 'Kutudaki bir eşyayı tut ve boşluğa kaydır!',
     axis: '↔ ↕ Oklu eşya yalnızca ok yönünde kayar!',
-    towel: '🏖️ Havluyu duvara doğru itmeye devam et: 1×3 → 1×2!',
-    lid: '💎 Takı kutusu kıpırdamıyor: şimdi kapağını tak!'
+    towel: 'Havluyu duvara doğru itmeye devam et: 1×3 → 1×2!',
+    lid: 'Takı kutusu kıpırdamıyor: şimdi kapağını tak!'
   };
   const GUIDE_OK = { gate: 'Harika! Sıradaki eşyayı da gönder.', slide: 'Süper! Eşyaları kaydırarak yer açabilirsin.', axis: 'Tamam! Ok yönü = kayma yönü.', towel: 'Büzüştü! Havlu artık 1×2.', lid: 'Kapak takıldı!' };
   const guide = { mode: null, kind: null, tone: '', timer: 0, prev: null };
@@ -1626,6 +1626,10 @@
     gb.hidden = false;
     gb.classList.remove('gone', 'pulse', ...GUIDE_TONES);
     if (guide.tone) gb.classList.add(guide.tone);
+    const t = guide.tone;
+    $('#guideIco').innerHTML = t === 'hard' ? Q7.alertFlame : t === 'super' ? Q7.skull : t === 'warn' ? Q7.alert
+      : (t === 'win' || t === 'ok') ? Q7.check : mode === 'tut' ? Q7.hand : Q7.bulb;
+    gb.classList.toggle('wide-ico', t === 'hard');
     void gb.offsetWidth; gb.classList.add('pulse');
   }
   /* short-lived message (former toast) in the same slot; the hint underneath comes back afterwards */
@@ -1644,7 +1648,7 @@
     guide.timer = setTimeout(() => { guide.mode = null; el.guideBanner.classList.add('gone'); }, ms || 0);
   }
   function markTut(k) {
-    if (!tutMem[k] && ((guide.mode === 'tut' && guide.kind === k) || (guide.mode === 'flash' && guide.prev && guide.prev.kind === k))) { guide.prev = null; setGuide('✓ ' + GUIDE_OK[k], 'ok'); fadeGuide(2600); }
+    if (!tutMem[k] && ((guide.mode === 'tut' && guide.kind === k) || (guide.mode === 'flash' && guide.prev && guide.prev.kind === k))) { guide.prev = null; setGuide(GUIDE_OK[k], 'ok'); fadeGuide(2600); }
     tutMem[k] = true;
     try { localStorage.setItem('pj-tut-' + k, '1'); } catch (e) { /* ignore */ }
     if (tut.kind === k) stopTut(false);
@@ -1902,8 +1906,8 @@
   }
 
   /* ---------- icons ---------- */
-  function coinSVG(sz) {
-    return `<svg class="coin-ico" width="${sz}" height="${sz}" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="21.5" r="17" fill="#B86A0B"/><circle cx="20" cy="19.5" r="17" fill="#FFC93C"/><circle cx="20" cy="19.5" r="12.5" fill="#FFB020" stroke="#FFE38A" stroke-width="2"/><rect x="13.5" y="16" width="13" height="10" rx="2.5" fill="#C9770A"/><path d="M17 16v-2.4a1.4 1.4 0 0 1 1.4-1.4h3.2a1.4 1.4 0 0 1 1.4 1.4V16" fill="none" stroke="#C9770A" stroke-width="2"/><path d="M8 13a14 14 0 0 1 9-7" stroke="#FFF3C4" stroke-width="2.4" stroke-linecap="round" fill="none"/></svg>`;
+  function coinSVG(sz, glow) {
+    return Q7.coin(!!glow).replace('<svg ', `<svg width="${sz}" height="${sz}" `).replace('class="q7-coin"', 'class="coin-ico q7-coin"');
   }
   const STAR_PATH = 'M50 6 63.5 34.5 94 38.5 71.5 59.5 77.5 90 50 75 22.5 90 28.5 59.5 6 38.5 36.5 34.5Z';
   function starSVG(filled, sz) {
@@ -2018,6 +2022,31 @@
     if (hero.tagMat.map) hero.tagMat.map.dispose();
     hero.tagMat.map = heroTagTex(n); hero.tagMat.needsUpdate = true; heroTagFor = n;
   }
+  /* Scene art: 738×1024, the suitcase + four friends sit in x 160–640, y 90–690.
+     Scale so that group fits the free area between the top bar and the play button, centred there. */
+  const ART = { w: 738, h: 1024, x0: 160, x1: 640, y0: 90, y1: 690 };
+  function placeHomeArt(w, h, top, bot) {
+    const img = $('#homeArt'); if (!img) return;
+    const bg = $('#homeArtBg'); if (bg && !bg.style.backgroundImage) bg.style.backgroundImage = `url("${img.src}")`;
+    const art = img.parentNode, cxA = (ART.x0 + ART.x1) / 2, cyA = (ART.y0 + ART.y1) / 2;
+    const cover = w / h < 0.8;                      // telefon / dikey ekran: resim tüm ekranı kaplar
+    art.classList.toggle('cover', cover);
+    let s, x, y;
+    if (cover) {
+      s = Math.max(w / ART.w, h / ART.h);
+      const freeTop = top, freeH = Math.max(160, h - top - bot);
+      x = Math.min(0, Math.max(w - ART.w * s, w / 2 - cxA * s));          // grubu ortala, kenar açığı bırakma
+      y = Math.min(0, Math.max(h - ART.h * s, freeTop + freeH / 2 - cyA * s));
+    } else {
+      /* geniş ekran: grup üst barın altından Oyna butonuna kadar olan alana sığar (sandık kartının arkasına taşabilir) */
+      const barB = Math.max(0, $('.home-bar').getBoundingClientRect().bottom - app.getBoundingClientRect().top);
+      const areaTop = barB + 8, areaH = Math.max(160, h - areaTop - bot);
+      s = Math.min((w - 16) / (ART.x1 - ART.x0), areaH / (ART.y1 - ART.y0));
+      x = w / 2 - cxA * s; y = areaTop + areaH / 2 - cyA * s;
+    }
+    img.style.width = ART.w * s + 'px'; img.style.height = ART.h * s + 'px';
+    img.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
+  }
   function fitHomeCamera() {
     const w = app.clientWidth, h = app.clientHeight;
     if (!w || !h || !hero) return;
@@ -2027,6 +2056,7 @@
     const ctaTop = el.homeCta.hidden ? el.tabbar.getBoundingClientRect().top : el.homeCta.getBoundingClientRect().top;
     const bot = Math.max(0, ar.bottom - ctaTop);
     const freeH = Math.max(160, h - top - bot);
+    placeHomeArt(w, h, top, bot);
     camera.setViewOffset(w, h, 0, -((top + freeH / 2) - h / 2), w, h);
     const target = hero.box.getCenter(new THREE.Vector3()), dir = new THREE.Vector3(0, Math.sin(0.2), Math.cos(0.2));
     const pts = [], b = hero.box, v = new THREE.Vector3();
@@ -2055,7 +2085,7 @@
     el.helpOv.hidden = true; el.shakePick.hidden = true; el.result.hidden = true;
     gsap.killTweensOf(root.position); root.visible = false;
     el.hudTop.hidden = true; el.hudBottom.hidden = true; el.home.hidden = false;
-    setHeroLevel(nextLevel()); hero.g.visible = true;
+    setHeroLevel(nextLevel()); hero.g.visible = false;   /* ana ekran artık 2D sahne resmi kullanıyor (#homeArt) */
     setTab(tab || 'home');
     updateHome(opts.fromCoins);
     fitHomeCamera();
@@ -2571,9 +2601,9 @@
     const pill = $('#lvlPill'), badge = $('#tierBadge');
     if (pill && badge) {
       pill.className = 'lean-pill level-pill ' + tier;
-      if (tier === 'super') { badge.hidden = false; badge.className = 'tier-badge super'; badge.textContent = '💀 SÜPER ZOR'; }
-      else if (tier === 'hard') { badge.hidden = false; badge.className = 'tier-badge hard'; badge.textContent = '🔥 ZOR'; }
-      else if (tier === 'easy') { badge.hidden = false; badge.className = 'tier-badge easy'; badge.textContent = 'FERAH'; }
+      if (tier === 'super') { badge.hidden = false; badge.className = 'tier-badge super'; badge.innerHTML = Q7.skull + '<span>SÜPER ZOR</span>'; }
+      else if (tier === 'hard') { badge.hidden = false; badge.className = 'tier-badge hard'; badge.innerHTML = Q7.flame + '<span>ZOR</span>'; }
+      else if (tier === 'easy') { badge.hidden = false; badge.className = 'tier-badge easy'; badge.innerHTML = '<span>FERAH</span>'; }
       else { badge.hidden = true; }
     }
     G.pauseAt = null;
@@ -2681,9 +2711,10 @@
     setSoundIcon();
     $('#helpItems').innerHTML = ['perfume', 'passport', 'console', 'towel', 'kit', 'organizer', 'jewelry', 'lid', 'divider']
       .map(k => `<img src="${iconOf(k)}" alt="" title="${ITEM_NAME[k]}">`).join('');
-    $('#hCoinIco').innerHTML = coinSVG(32);
-    if ($('#hudCoinIco')) $('#hudCoinIco').innerHTML = coinSVG(26);
-    $('#chestIco').innerHTML = CHEST_SVG;
+    $('#hCoinIco').innerHTML = Q8.gcoin(true);
+    $('#hCoinPlus').addEventListener('click', () => { sfx.unlock(); sfx.click(); setTab('shop'); });
+    if ($('#hudCoinIco')) $('#hudCoinIco').innerHTML = coinSVG(46, true);
+    $('#chestIco').innerHTML = Q8.chest;
     document.querySelectorAll('#resStars .rstar').forEach(n => { n.innerHTML = bigStarSVG(); });
     $('#resPile').innerHTML = [[8, 40, 52], [44, 44, 56], [80, 40, 52], [26, 18, 54], [62, 18, 54], [44, 0, 58]].map(([x, y, z]) => `<span style="position:absolute;left:${x}px;top:${y}px">${coinSVG(z)}</span>`).join('');
     buildHero();

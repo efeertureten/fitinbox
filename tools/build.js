@@ -7,7 +7,7 @@ const ROOT = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 
 const page = read('src/page.html').replace('<meta name="claude:viewport-fit-sides" content="cover">\n', '');
-const cut = page.indexOf('<div id="app">');
+const cut = page.search(/<svg width="0" height="0"|<div id="app">/);   // body starts at the shared SVG sprites (if any), else at #app
 const head = page.slice(0, cut).trim(), body = page.slice(cut).trim();
 const html = `<!doctype html>
 <html lang="tr">
@@ -27,6 +27,12 @@ ${read('src/engine.js')}
 ${read('src/levels.js')}
 ${read('src/levels.baked.js')}
 ${read('src/icons.js')}
+</script>
+<script>
+${read('src/hud-icons.js')}
+</script>
+<script>
+${read('src/home-icons.js')}
 </script>
 <script>
 ${read('src/game.js')}
